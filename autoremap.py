@@ -46,10 +46,13 @@ def is_keyboard_connected(name: str) -> bool:
                                        '-json'],
                                  stdout=subprocess.PIPE).communicate()
     out = loads(stdout.decode())
-    connected_devices = out['SPBluetoothDataType'][0]['device_connected']
-    for device in connected_devices:
-        if name in device:
-            return True
+    try:
+        connected_devices = out['SPBluetoothDataType'][0]['device_connected']
+        for device in connected_devices:
+            if name in device:
+                return True
+    except KeyError:
+        return False
     return False
 
 
