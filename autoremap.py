@@ -3,9 +3,13 @@ from json import dumps, loads
 import argparse
 import subprocess
 import time
+import usb
 
 
 KEYBOARD_NAME = 'MX Keys'
+VID = 0x046d
+PID = 0xc52b
+
 
 GENERAL_MAPPINGS = [
     (0x7000000e6, 0x7000000e7),  # Swap right CMD with OPT
@@ -40,7 +44,7 @@ def set_mappings(mappings: List[Mapping]):
                      stdout=subprocess.PIPE).communicate()
 
 
-def is_keyboard_connected(name: str) -> bool:
+def is_keyboard_connected_bt(name: str) -> bool:
     stdout, _ = subprocess.Popen(args=['system_profiler',
                                        'SPBluetoothDataType',
                                        '-json'],
@@ -54,6 +58,19 @@ def is_keyboard_connected(name: str) -> bool:
     except KeyError:
         return False
     return False
+
+
+def is_keyboard_connected_usb(vid: int, pid: int) -> bool:
+    device: usb.Device | None = usb.core.find(idVendor=vid, idProduct=pid)
+    if device is not None:
+        return True
+    return False
+
+
+def is_keyboard_connected() -> bool:
+    bt_conn = is_keyboard_connected_bt(KEYBOARD_NAME)
+    usb_conn = is_keyboard_connected_usb(VID, PID)
+    return bt_conn or usb_conn
 
 
 def update_mapping(keyboard_connected: bool):
@@ -73,12 +90,12 @@ def main():
     parser.add_argument('-i', '--interval', type=int, default=DEFAULT_INTERVAL)
     args = parser.parse_args()
 
-    prev_connected = is_keyboard_connected(KEYBOARD_NAME)
+    prev_connected = is_keyboard_connected()
     update_mapping(prev_connected)
 
     while True:
         time.sleep(args.interval)
-        connected = is_keyboard_connected(KEYBOARD_NAME)
+        connected = is_keyboard_connected()
         if connected != prev_connected:
             update_mapping(connected)
             prev_connected = connected
